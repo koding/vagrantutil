@@ -35,6 +35,7 @@ const (
 	Unknown Status = iota
 	NotCreated
 	Running
+	Saved
 )
 
 type Vagrant struct {
@@ -249,6 +250,8 @@ func toStatus(state string) Status {
 		return Running
 	case "not_created":
 		return NotCreated
+	case "saved":
+		return Saved
 	default:
 		return Unknown
 	}
