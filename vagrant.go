@@ -32,10 +32,13 @@ const (
 )
 
 const (
+	// Some possible states:
+	// https://github.com/mitchellh/vagrant/blob/master/templates/locales/en.yml#L1504
 	Unknown Status = iota
 	NotCreated
 	Running
 	Saved
+	PowerOff
 )
 
 type Vagrant struct {
@@ -115,7 +118,7 @@ func (v *Vagrant) Status() (Status, error) {
 		return Unknown, err
 	}
 
-	return toStatus(status), nil
+	return toStatus(status)
 }
 
 // Up executes "vagrant up" for the given vagrantfile. The returned reader
@@ -244,16 +247,18 @@ func parseRecords(out string) ([][]string, error) {
 }
 
 // toStatus convers the given state string to Status type
-func toStatus(state string) Status {
+func toStatus(state string) (Status, error) {
 	switch state {
 	case "running":
-		return Running
+		return Running, nil
 	case "not_created":
-		return NotCreated
+		return NotCreated, nil
 	case "saved":
-		return Saved
+		return Saved, nil
+	case "poweroff":
+		return PowerOff, nil
 	default:
-		return Unknown
+		return Unknown, fmt.Errorf("Unknown state: %s", state)
 	}
 
 }
