@@ -32,7 +32,8 @@ const (
 )
 
 const (
-	NotCreated Status = iota
+	Unknown Status = iota
+	NotCreated
 	Running
 )
 
@@ -93,27 +94,27 @@ func (v *Vagrant) Box(subcommand BoxSubcommand) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
-func (v *Vagrant) Status() (string, error) {
+func (v *Vagrant) Status() (Status, error) {
 	if err := v.vagrantfileExists(); err != nil {
-		return "", err
+		return Unknown, err
 	}
 
 	out, err := v.runCommand("status")
 	if err != nil {
-		return "", err
+		return Unknown, err
 	}
 
 	records, err := parseRecords(out)
 	if err != nil {
-		return "", err
+		return Unknown, err
 	}
 
 	status, err := parseData(records, "state")
 	if err != nil {
-		return "", err
+		return Unknown, err
 	}
 
-	return status, nil
+	return toStatus(status), nil
 }
 
 // Up executes "vagrant up" for the given vagrantfile. The returned reader
@@ -239,4 +240,17 @@ func parseRecords(out string) ([][]string, error) {
 	buf := bytes.NewBufferString(out)
 	c := csv.NewReader(buf)
 	return c.ReadAll()
+}
+
+// toStatus convers the given state string to Status type
+func toStatus(state string) Status {
+	switch state {
+	case "running":
+		return Running
+	case "not_created":
+		return NotCreated
+	default:
+		return Unknown
+	}
+
 }

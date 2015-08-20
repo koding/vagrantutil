@@ -15,9 +15,9 @@ func (i BoxSubcommand) String() string {
 	return _BoxSubcommand_name[_BoxSubcommand_index[i]:_BoxSubcommand_index[i+1]]
 }
 
-const _Status_name = "NotCreatedRunning"
+const _Status_name = "UnknownNotCreatedRunning"
 
-var _Status_index = [...]uint8{0, 10, 17}
+var _Status_index = [...]uint8{0, 7, 17, 24}
 
 func (i Status) String() string {
 	if i < 0 || i >= Status(len(_Status_index)-1) {

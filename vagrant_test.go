@@ -71,6 +71,15 @@ func TestUp(t *testing.T) {
 	if err := scanner.Err(); err != nil {
 		t.Errorf("vagrant up error: %s", err)
 	}
+
+	status, err := vg.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status != Running {
+		t.Errorf("Vagrant status should be: %s. Got: %s", Running, status)
+	}
 }
 
 func TestDestroy(t *testing.T) {
