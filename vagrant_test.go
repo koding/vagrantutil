@@ -105,6 +105,15 @@ func TestDestroy(t *testing.T) {
 	}
 	log.Printf("\n\nStreaming is finished for 'vagrant destroy' command")
 
+	status, err := vg.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status != NotCreated {
+		t.Errorf("Vagrant status should be: %s. Got: %s", NotCreated, status)
+	}
+
 }
 
 func TestStatus(t *testing.T) {
