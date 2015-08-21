@@ -14,6 +14,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 //go:generate stringer -type=BoxSubcommand,Status  -output=stringer.go
@@ -212,10 +213,12 @@ func startCommand(cmd *exec.Cmd) (<-chan *CommandOutput, error) {
 		return nil, err
 	}
 
+	var wg sync.WaitGroup
 	out := make(chan *CommandOutput)
 
-	go func() {
-		scanner := bufio.NewScanner(io.MultiReader(stderrPipe, stdoutPipe))
+	output := func(r io.Reader) {
+		wg.Add(1)
+		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
 			out <- &CommandOutput{Line: scanner.Text(), Error: nil}
 		}
@@ -223,10 +226,18 @@ func startCommand(cmd *exec.Cmd) (<-chan *CommandOutput, error) {
 		if err := scanner.Err(); err != nil {
 			out <- &CommandOutput{Line: "", Error: err}
 		}
+		wg.Done()
+	}
 
+	go output(stdoutPipe)
+	go output(stderrPipe)
+
+	go func() {
+		wg.Wait()
 		if err := cmd.Wait(); err != nil {
 			out <- &CommandOutput{Line: "", Error: err}
 		}
+
 		close(out)
 	}()
 
