@@ -1,6 +1,7 @@
 package vagrantutil
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/csv"
 	"errors"
@@ -124,16 +125,16 @@ func (v *Vagrant) Status() (Status, error) {
 // Up executes "vagrant up" for the given vagrantfile. The returned reader
 // contains the output stream. The client is responsible of calling the Close
 // method of the returned reader.
-func (v *Vagrant) Up(vagrantfile string) (io.ReadCloser, error) {
+func (v *Vagrant) Up(vagrantfile string, out func(string)) error {
 	if vagrantfile == "" {
-		return nil, errors.New("Vagrantfile content is empty")
+		return errors.New("Vagrantfile content is empty")
 	}
 
 	// if it's exists, don't overwrite anything and use the existing one
 	if err := v.vagrantfileExists(); err != nil {
 		err := ioutil.WriteFile(v.vagrantfile(), []byte(vagrantfile), 0644)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	} else {
 		// TODO(arslan): replace logging with koding/logging
@@ -143,20 +144,29 @@ func (v *Vagrant) Up(vagrantfile string) (io.ReadCloser, error) {
 	cmd := v.createCommand("up")
 	pipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if err := cmd.Start(); err != nil {
-		return nil, err
+		return err
 	}
 
-	go func() {
-		if err := cmd.Wait(); err != nil {
-			log.Printf("[error]: vagrant up error: %s", err)
-		}
-	}()
+	log.Printf("Starting to read the stream output of 'vagrant up':\n\n")
+	scanner := bufio.NewScanner(pipe)
+	for scanner.Scan() {
+		out(scanner.Text())
+	}
 
-	return pipe, nil
+	log.Printf("\n\nStreaming is finished for 'vagrant up' command")
+	if err := scanner.Err(); err != nil {
+		return err
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Destroy executes "vagrant destroy". The returned reader contains the output
