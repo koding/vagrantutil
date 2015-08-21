@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -42,6 +41,7 @@ const (
 	PowerOff
 )
 
+// CommandOutput is the streaming output of a command
 type CommandOutput struct {
 	Line  string
 	Error error
@@ -51,9 +51,6 @@ type Vagrant struct {
 	// VagrantfilePath is the directory with specifies the directory where
 	// Vagrantfile is being stored.
 	VagrantfilePath string
-
-	// BoxPath
-	BoxPath string
 }
 
 // NewVagrant returns a new Vagrant instance for the given path. The path
@@ -84,7 +81,7 @@ func (v *Vagrant) Create(vagrantFile string) error {
 }
 
 func (v *Vagrant) Version() (string, error) {
-	out, err := v.runCommand("version")
+	out, err := v.runVagrantCommand("version")
 	if err != nil {
 		return "", err
 	}
@@ -103,7 +100,7 @@ func (v *Vagrant) Version() (string, error) {
 }
 
 func (v *Vagrant) Box(subcommand BoxSubcommand) (string, error) {
-	out, err := v.runCommand("box", subcommand.String())
+	out, err := v.runVagrantCommand("box", subcommand.String())
 	if err != nil {
 		return "", err
 	}
@@ -116,7 +113,7 @@ func (v *Vagrant) Status() (Status, error) {
 		return Unknown, err
 	}
 
-	out, err := v.runCommand("status")
+	out, err := v.runVagrantCommand("status")
 	if err != nil {
 		return Unknown, err
 	}
@@ -137,23 +134,8 @@ func (v *Vagrant) Status() (Status, error) {
 // Up executes "vagrant up" for the given vagrantfile. The returned channel
 // contains the output stream. At the end of the output, the error is put into
 // the Error field if there is any.
-func (v *Vagrant) Up(vagrantfile string) (<-chan *CommandOutput, error) {
-	if vagrantfile == "" {
-		return nil, errors.New("Vagrantfile content is empty")
-	}
-
-	// if it's exists, don't overwrite anything and use the existing one
-	if err := v.vagrantfileExists(); err != nil {
-		err := ioutil.WriteFile(v.vagrantfile(), []byte(vagrantfile), 0644)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// TODO(arslan): replace logging with koding/logging
-		log.Printf("Using existing Vagrantfile at %s", v.VagrantfilePath)
-	}
-
-	cmd := v.createCommand("up")
+func (v *Vagrant) Up() (<-chan *CommandOutput, error) {
+	cmd := v.vagrantCommand("up")
 	return startCommand(cmd)
 }
 
@@ -161,11 +143,7 @@ func (v *Vagrant) Up(vagrantfile string) (<-chan *CommandOutput, error) {
 // stream. The client is responsible of calling the Close method of the
 // returned reader.
 func (v *Vagrant) Destroy() (<-chan *CommandOutput, error) {
-	if err := v.vagrantfileExists(); err != nil {
-		return nil, err
-	}
-
-	cmd := v.createCommand("destroy", "--force")
+	cmd := v.vagrantCommand("destroy", "--force")
 	return startCommand(cmd)
 }
 
@@ -183,13 +161,17 @@ func (v *Vagrant) vagrantfileExists() error {
 	return nil
 }
 
-func (v *Vagrant) createCommand(args ...string) *exec.Cmd {
+// vagrantCommand creates a command which is setup to be run next to
+// Vagrantfile
+func (v *Vagrant) vagrantCommand(args ...string) *exec.Cmd {
 	cmd := exec.Command("vagrant", args...)
 	cmd.Dir = v.VagrantfilePath
 	return cmd
 }
 
-func (v *Vagrant) runCommand(args ...string) (string, error) {
+// runVagrantCommand is a helper function which runs the given subcommands and
+// arguments with vagrant and returns the output
+func (v *Vagrant) runVagrantCommand(args ...string) (string, error) {
 	args = append(args, "--machine-readable")
 	cmd := exec.Command("vagrant", args...)
 	cmd.Dir = v.VagrantfilePath
@@ -250,6 +232,8 @@ func startCommand(cmd *exec.Cmd) (<-chan *CommandOutput, error) {
 	return out, nil
 }
 
+// parseData parses the given vagrant type field from the machine readable
+// output (records).
 func parseData(records [][]string, typeName string) (string, error) {
 	data := ""
 	for _, record := range records {

@@ -53,8 +53,19 @@ func TestVersion(t *testing.T) {
 	}
 }
 
+func TestCreate(t *testing.T) {
+	err := vg.Create(testVagrantFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := vg.vagrantfileExists(); err != nil {
+		t.Error(err)
+	}
+}
+
 func TestUp(t *testing.T) {
-	out, err := vg.Up(testVagrantFile)
+	out, err := vg.Up()
 	if err != nil {
 		t.Fatal(err)
 	}
