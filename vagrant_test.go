@@ -79,16 +79,22 @@ func TestUp(t *testing.T) {
 	}
 }
 
-// func TestDestroy(t *testing.T) {
-// 	out, err := vg.Destroy()
-// 	if err != nil {
-// 		t.Fatal(err)
-// 	}
-// 	defer out.Close()
-//
-// 	log.Printf("Starting to read the stream output of 'vagrant destroy':\n\n")
-//
-// }
+func TestDestroy(t *testing.T) {
+	out, err := vg.Destroy()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log.Printf("Starting to read the stream output of 'vagrant destroy':\n\n")
+	for res := range out {
+		if res.Error != nil {
+			t.Error(err)
+		}
+		log.Println(res.Line)
+	}
+	log.Printf("\n\nStreaming is finished for 'vagrant destroy' command")
+
+}
 
 func TestStatus(t *testing.T) {
 	status, err := vg.Status()

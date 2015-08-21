@@ -147,6 +147,57 @@ func (v *Vagrant) Up(vagrantfile string) (<-chan *CommandOutput, error) {
 	}
 
 	cmd := v.createCommand("up")
+	return startCommand(cmd)
+}
+
+// Destroy executes "vagrant destroy". The returned reader contains the output
+// stream. The client is responsible of calling the Close method of the
+// returned reader.
+func (v *Vagrant) Destroy() (<-chan *CommandOutput, error) {
+	if err := v.vagrantfileExists(); err != nil {
+		return nil, err
+	}
+
+	cmd := v.createCommand("destroy", "--force")
+	return startCommand(cmd)
+}
+
+// vagrantfile returns the Vagrantfile path
+func (v *Vagrant) vagrantfile() string {
+	return filepath.Join(v.VagrantfilePath, "Vagrantfile")
+}
+
+// vagrantfileExists checks if a Vagrantfile exists in the given path. It
+// returns a nil error if exists.
+func (v *Vagrant) vagrantfileExists() error {
+	if _, err := os.Stat(v.vagrantfile()); os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func (v *Vagrant) createCommand(args ...string) *exec.Cmd {
+	cmd := exec.Command("vagrant", args...)
+	cmd.Dir = v.VagrantfilePath
+	return cmd
+}
+
+func (v *Vagrant) runCommand(args ...string) (string, error) {
+	args = append(args, "--machine-readable")
+	cmd := exec.Command("vagrant", args...)
+	cmd.Dir = v.VagrantfilePath
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+
+	return string(out), nil
+}
+
+// startCommand starts the command and sends back both the stdout and stderr to
+// the returned channel. Any error happened during the streaming is passed to
+// the Error field.
+func startCommand(cmd *exec.Cmd) (<-chan *CommandOutput, error) {
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err
@@ -180,65 +231,6 @@ func (v *Vagrant) Up(vagrantfile string) (<-chan *CommandOutput, error) {
 	}()
 
 	return out, nil
-}
-
-// Destroy executes "vagrant destroy". The returned reader contains the output
-// stream. The client is responsible of calling the Close method of the
-// returned reader.
-func (v *Vagrant) Destroy() (io.ReadCloser, error) {
-	if err := v.vagrantfileExists(); err != nil {
-		return nil, err
-	}
-
-	cmd := v.createCommand("destroy", "--force")
-	pipe, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-
-	go func() {
-		if err := cmd.Wait(); err != nil {
-			log.Printf("[error]: vagrant up error: %s", err)
-		}
-	}()
-
-	return pipe, nil
-}
-
-// vagrantfile returns the Vagrantfile path
-func (v *Vagrant) vagrantfile() string {
-	return filepath.Join(v.VagrantfilePath, "Vagrantfile")
-}
-
-// vagrantfileExists checks if a Vagrantfile exists in the given path. It
-// returns a nil error if exists.
-func (v *Vagrant) vagrantfileExists() error {
-	if _, err := os.Stat(v.vagrantfile()); os.IsNotExist(err) {
-		return err
-	}
-	return nil
-}
-
-func (v *Vagrant) createCommand(args ...string) *exec.Cmd {
-	cmd := exec.Command("vagrant", args...)
-	cmd.Dir = v.VagrantfilePath
-	return cmd
-}
-
-func (v *Vagrant) runCommand(args ...string) (string, error) {
-	args = append(args, "--machine-readable")
-	cmd := exec.Command("vagrant", args...)
-	cmd.Dir = v.VagrantfilePath
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", err
-	}
-
-	return string(out), nil
 }
 
 func parseData(records [][]string, typeName string) (string, error) {
