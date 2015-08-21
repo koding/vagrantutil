@@ -64,6 +64,17 @@ func TestCreate(t *testing.T) {
 	}
 }
 
+func TestProvider(t *testing.T) {
+	provider, err := vg.Provider()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if provider != "virtualbox" {
+		t.Errorf("Vagrant provider should be 'virtualbox'. Got: %s", provider)
+	}
+}
+
 func TestUp(t *testing.T) {
 	out, err := vg.Up()
 	if err != nil {

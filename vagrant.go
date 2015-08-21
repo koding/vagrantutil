@@ -51,6 +51,9 @@ type Vagrant struct {
 	// VagrantfilePath is the directory with specifies the directory where
 	// Vagrantfile is being stored.
 	VagrantfilePath string
+
+	// ID is the unique ID of the given box
+	ID string
 }
 
 // NewVagrant returns a new Vagrant instance for the given path. The path
@@ -80,6 +83,7 @@ func (v *Vagrant) Create(vagrantFile string) error {
 	return ioutil.WriteFile(v.vagrantfile(), []byte(vagrantFile), 0644)
 }
 
+// Version returns the current installed vagrant version
 func (v *Vagrant) Version() (string, error) {
 	out, err := v.runVagrantCommand("version")
 	if err != nil {
@@ -108,6 +112,7 @@ func (v *Vagrant) Box(subcommand BoxSubcommand) (string, error) {
 	return strings.TrimSpace(out), nil
 }
 
+// Status returns the state of the box, such as "Running", "NotCreated", etc...
 func (v *Vagrant) Status() (Status, error) {
 	if err := v.vagrantfileExists(); err != nil {
 		return Unknown, err
@@ -129,6 +134,24 @@ func (v *Vagrant) Status() (Status, error) {
 	}
 
 	return toStatus(status)
+}
+
+func (v *Vagrant) Provider() (string, error) {
+	if err := v.vagrantfileExists(); err != nil {
+		return "", err
+	}
+
+	out, err := v.runVagrantCommand("status")
+	if err != nil {
+		return "", err
+	}
+
+	records, err := parseRecords(out)
+	if err != nil {
+		return "", err
+	}
+
+	return parseData(records, "provider-name")
 }
 
 // Up executes "vagrant up" for the given vagrantfile. The returned channel
