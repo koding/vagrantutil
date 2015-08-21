@@ -85,7 +85,7 @@ func (v *Vagrant) Create(vagrantFile string) error {
 
 // Version returns the current installed vagrant version
 func (v *Vagrant) Version() (string, error) {
-	out, err := v.runVagrantCommand("version")
+	out, err := v.runVagrantCommand("version", "--machine-readable")
 	if err != nil {
 		return "", err
 	}
@@ -104,7 +104,7 @@ func (v *Vagrant) Version() (string, error) {
 }
 
 func (v *Vagrant) Box(subcommand BoxSubcommand) (string, error) {
-	out, err := v.runVagrantCommand("box", subcommand.String())
+	out, err := v.runVagrantCommand("box", subcommand.String(), "--machine-readable")
 	if err != nil {
 		return "", err
 	}
@@ -114,11 +114,7 @@ func (v *Vagrant) Box(subcommand BoxSubcommand) (string, error) {
 
 // Status returns the state of the box, such as "Running", "NotCreated", etc...
 func (v *Vagrant) Status() (Status, error) {
-	if err := v.vagrantfileExists(); err != nil {
-		return Unknown, err
-	}
-
-	out, err := v.runVagrantCommand("status")
+	out, err := v.runVagrantCommand("status", "--machine-readable")
 	if err != nil {
 		return Unknown, err
 	}
@@ -137,11 +133,7 @@ func (v *Vagrant) Status() (Status, error) {
 }
 
 func (v *Vagrant) Provider() (string, error) {
-	if err := v.vagrantfileExists(); err != nil {
-		return "", err
-	}
-
-	out, err := v.runVagrantCommand("status")
+	out, err := v.runVagrantCommand("status", "--machine-readable")
 	if err != nil {
 		return "", err
 	}
@@ -153,6 +145,14 @@ func (v *Vagrant) Provider() (string, error) {
 
 	return parseData(records, "provider-name")
 }
+
+// List returns all available boxes on the system.
+// func (v *Vagrant) List() ([]*Vagrant, error) {
+// 	out, err := v.runVagrantCommand("status", "--global-status")
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// }
 
 // Up executes "vagrant up" for the given vagrantfile. The returned channel
 // contains the output stream. At the end of the output, the error is put into
@@ -203,8 +203,7 @@ func (v *Vagrant) vagrantCommand(args ...string) *exec.Cmd {
 // runVagrantCommand is a helper function which runs the given subcommands and
 // arguments with vagrant and returns the output
 func (v *Vagrant) runVagrantCommand(args ...string) (string, error) {
-	args = append(args, "--machine-readable")
-	cmd := exec.Command("vagrant", args...)
+	cmd := v.vagrantCommand(args...)
 	cmd.Dir = v.VagrantfilePath
 	out, err := cmd.CombinedOutput()
 	if err != nil {
