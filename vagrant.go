@@ -11,7 +11,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -52,29 +51,36 @@ type Vagrant struct {
 	// VagrantfilePath is the directory with specifies the directory where
 	// Vagrantfile is being stored.
 	VagrantfilePath string
+
+	// BoxPath
+	BoxPath string
 }
 
 // NewVagrant returns a new Vagrant instance for the given path. The path
 // should be unique. If the path already exists in the system it'll be used, if
 // not a new setup will be createad.
 func NewVagrant(path string) (*Vagrant, error) {
-	u, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-
 	if path == "" {
-		return nil, err
+		return nil, errors.New("vagrant: path is empty")
 	}
 
-	vagrantHome := filepath.Join(u.HomeDir, ".koding-boxes", path)
-	if err := os.MkdirAll(vagrantHome, 0755); err != nil {
+	if err := os.MkdirAll(path, 0755); err != nil {
 		return nil, err
 	}
 
 	return &Vagrant{
-		VagrantfilePath: vagrantHome,
+		VagrantfilePath: path,
 	}, nil
+}
+
+// Create creates the vagrantFile in the pre initialized vagrant path.
+func (v *Vagrant) Create(vagrantFile string) error {
+	// if it's exists, don't overwrite anything and use the existing one
+	if err := v.vagrantfileExists(); err == nil {
+		return nil
+	}
+
+	return ioutil.WriteFile(v.vagrantfile(), []byte(vagrantFile), 0644)
 }
 
 func (v *Vagrant) Version() (string, error) {
