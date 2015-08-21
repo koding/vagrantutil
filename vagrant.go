@@ -139,6 +139,14 @@ func (v *Vagrant) Up() (<-chan *CommandOutput, error) {
 	return startCommand(cmd)
 }
 
+// Halt executes "vagrant halt". The returned reader contains the output
+// stream. The client is responsible of calling the Close method of the
+// returned reader.
+func (v *Vagrant) Halt() (<-chan *CommandOutput, error) {
+	cmd := v.vagrantCommand("halt")
+	return startCommand(cmd)
+}
+
 // Destroy executes "vagrant destroy". The returned reader contains the output
 // stream. The client is responsible of calling the Close method of the
 // returned reader.

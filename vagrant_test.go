@@ -90,6 +90,32 @@ func TestUp(t *testing.T) {
 	}
 }
 
+func TestHalt(t *testing.T) {
+	out, err := vg.Halt()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	log.Printf("Starting to read the stream output of 'vagrant halt':\n\n")
+	for res := range out {
+		if res.Error != nil {
+			t.Error(err)
+		}
+		log.Println(res.Line)
+	}
+
+	log.Printf("\n\nStreaming is finished for 'vagrant halt' command")
+
+	status, err := vg.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status != PowerOff {
+		t.Errorf("Vagrant status should be: %s. Got: %s", PowerOff, status)
+	}
+}
+
 func TestDestroy(t *testing.T) {
 	out, err := vg.Destroy()
 	if err != nil {
