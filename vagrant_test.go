@@ -54,14 +54,20 @@ func TestVersion(t *testing.T) {
 }
 
 func TestUp(t *testing.T) {
-	logFunc := func(line string) {
-		log.Println(line)
-	}
-
-	err := vg.Up(testVagrantFile, logFunc)
+	out, err := vg.Up(testVagrantFile)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	log.Printf("Starting to read the stream output of 'vagrant up':\n\n")
+	for res := range out {
+		if res.Error != nil {
+			t.Error(err)
+		}
+		log.Println(res.Line)
+	}
+
+	log.Printf("\n\nStreaming is finished for 'vagrant up' command")
 
 	status, err := vg.Status()
 	if err != nil {

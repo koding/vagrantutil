@@ -42,6 +42,11 @@ const (
 	PowerOff
 )
 
+type CommandOutput struct {
+	Line  string
+	Error error
+}
+
 type Vagrant struct {
 	// VagrantfilePath is the directory with specifies the directory where
 	// Vagrantfile is being stored.
@@ -122,19 +127,19 @@ func (v *Vagrant) Status() (Status, error) {
 	return toStatus(status)
 }
 
-// Up executes "vagrant up" for the given vagrantfile. The returned reader
-// contains the output stream. The client is responsible of calling the Close
-// method of the returned reader.
-func (v *Vagrant) Up(vagrantfile string, out func(string)) error {
+// Up executes "vagrant up" for the given vagrantfile. The returned channel
+// contains the output stream. At the end of the output, the error is put into
+// the Error field if there is any.
+func (v *Vagrant) Up(vagrantfile string) (<-chan *CommandOutput, error) {
 	if vagrantfile == "" {
-		return errors.New("Vagrantfile content is empty")
+		return nil, errors.New("Vagrantfile content is empty")
 	}
 
 	// if it's exists, don't overwrite anything and use the existing one
 	if err := v.vagrantfileExists(); err != nil {
 		err := ioutil.WriteFile(v.vagrantfile(), []byte(vagrantfile), 0644)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	} else {
 		// TODO(arslan): replace logging with koding/logging
@@ -142,31 +147,39 @@ func (v *Vagrant) Up(vagrantfile string, out func(string)) error {
 	}
 
 	cmd := v.createCommand("up")
-	pipe, err := cmd.StdoutPipe()
+	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return nil, err
 	}
 
 	if err := cmd.Start(); err != nil {
-		return err
+		return nil, err
 	}
 
-	log.Printf("Starting to read the stream output of 'vagrant up':\n\n")
-	scanner := bufio.NewScanner(pipe)
-	for scanner.Scan() {
-		out(scanner.Text())
-	}
+	out := make(chan *CommandOutput)
 
-	log.Printf("\n\nStreaming is finished for 'vagrant up' command")
-	if err := scanner.Err(); err != nil {
-		return err
-	}
+	go func() {
+		scanner := bufio.NewScanner(io.MultiReader(stderrPipe, stdoutPipe))
+		for scanner.Scan() {
+			out <- &CommandOutput{Line: scanner.Text(), Error: nil}
+		}
 
-	if err := cmd.Wait(); err != nil {
-		return err
-	}
+		if err := scanner.Err(); err != nil {
+			out <- &CommandOutput{Line: "", Error: err}
+		}
 
-	return nil
+		if err := cmd.Wait(); err != nil {
+			out <- &CommandOutput{Line: "", Error: err}
+		}
+		close(out)
+	}()
+
+	return out, nil
 }
 
 // Destroy executes "vagrant destroy". The returned reader contains the output
