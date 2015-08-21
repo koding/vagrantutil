@@ -54,20 +54,20 @@ type Vagrant struct {
 	VagrantfilePath string
 }
 
-// NewVagrant returns a new Vagrant instance for the given name. The name
-// should be unique. If the name already exists in the system it'll be used, if
+// NewVagrant returns a new Vagrant instance for the given path. The path
+// should be unique. If the path already exists in the system it'll be used, if
 // not a new setup will be createad.
-func NewVagrant(name string) (*Vagrant, error) {
+func NewVagrant(path string) (*Vagrant, error) {
 	u, err := user.Current()
 	if err != nil {
 		return nil, err
 	}
 
-	if name == "" {
+	if path == "" {
 		return nil, err
 	}
 
-	vagrantHome := filepath.Join(u.HomeDir, ".koding-boxes", name)
+	vagrantHome := filepath.Join(u.HomeDir, ".koding-boxes", path)
 	if err := os.MkdirAll(vagrantHome, 0755); err != nil {
 		return nil, err
 	}
