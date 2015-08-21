@@ -146,13 +146,47 @@ func (v *Vagrant) Provider() (string, error) {
 	return parseData(records, "provider-name")
 }
 
-// List returns all available boxes on the system.
-// func (v *Vagrant) List() ([]*Vagrant, error) {
-// 	out, err := v.runVagrantCommand("status", "--global-status")
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// }
+// List returns all available boxes on the system. Under the hood it calls
+// "global-status" and parses the output.
+func (v *Vagrant) List() ([]*Vagrant, error) {
+	out, err := v.runVagrantCommand("global-status")
+	if err != nil {
+		return nil, err
+	}
+
+	output := make([][]string, 0)
+
+	scanner := bufio.NewScanner(bytes.NewBufferString(out))
+	collectStarted := false
+
+	for scanner.Scan() {
+		if strings.HasPrefix(scanner.Text(), "--") {
+			scanner.Scan() // advance to next line
+			collectStarted = true
+		}
+
+		if !collectStarted {
+			continue
+		}
+
+		trimmedLine := strings.TrimSpace(scanner.Text())
+		if trimmedLine == "" {
+			break // we are finished with collecting the boxes
+		}
+
+		output = append(output, strings.Fields(trimmedLine))
+	}
+
+	boxes := make([]*Vagrant, len(output))
+	for i, box := range output {
+		boxes[i] = &Vagrant{
+			VagrantfilePath: box[len(box)-1],
+			ID:              box[0],
+		}
+	}
+
+	return boxes, nil
+}
 
 // Up executes "vagrant up" for the given vagrantfile. The returned channel
 // contains the output stream. At the end of the output, the error is put into

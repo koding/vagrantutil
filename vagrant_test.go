@@ -161,3 +161,10 @@ func TestStatus(t *testing.T) {
 
 	fmt.Printf("status = %+v\n", status)
 }
+
+func TestList(t *testing.T) {
+	_, err := vg.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
