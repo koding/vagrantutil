@@ -1,3 +1,5 @@
+// Package vagrantutil is a high level wrapper around Vagrant which provides an
+// idiomatic go API.
 package vagrantutil
 
 import (
