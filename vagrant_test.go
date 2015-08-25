@@ -127,6 +127,23 @@ func TestHalt(t *testing.T) {
 	}
 }
 
+func TestList(t *testing.T) {
+	list, err := vg.List()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, l := range list {
+		status, err := l.Status()
+		if err != nil {
+			t.Log(err)
+			continue
+		}
+
+		fmt.Printf("status = %s path = %s\n", status, l.VagrantfilePath)
+	}
+}
+
 func TestDestroy(t *testing.T) {
 	out, err := vg.Destroy()
 	if err != nil {
@@ -160,11 +177,4 @@ func TestStatus(t *testing.T) {
 	}
 
 	fmt.Printf("status = %+v\n", status)
-}
-
-func TestList(t *testing.T) {
-	_, err := vg.List()
-	if err != nil {
-		t.Fatal(err)
-	}
 }
