@@ -15,21 +15,9 @@ import (
 	"sync"
 )
 
-//go:generate stringer -type=BoxSubcommand,Status  -output=stringer.go
+//go:generate stringer -type=Status  -output=stringer.go
 
-type (
-	BoxSubcommand int
-	Status        int
-)
-
-const (
-	Add BoxSubcommand = iota
-	List
-	Outdated
-	Remove
-	Repackage
-	Update
-)
+type Status int
 
 const (
 	// Some possible states:
@@ -101,15 +89,6 @@ func (v *Vagrant) Version() (string, error) {
 	}
 
 	return versionInstalled, nil
-}
-
-func (v *Vagrant) Box(subcommand BoxSubcommand) (string, error) {
-	out, err := v.runVagrantCommand("box", subcommand.String(), "--machine-readable")
-	if err != nil {
-		return "", err
-	}
-
-	return strings.TrimSpace(out), nil
 }
 
 // Status returns the state of the box, such as "Running", "NotCreated", etc...
