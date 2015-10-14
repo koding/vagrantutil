@@ -4,9 +4,9 @@ package vagrantutil
 
 import "fmt"
 
-const _Status_name = "UnknownNotCreatedRunningSavedPowerOff"
+const _Status_name = "UnknownNotCreatedRunningSavedPowerOffAborted"
 
-var _Status_index = [...]uint8{0, 7, 17, 24, 29, 37}
+var _Status_index = [...]uint8{0, 7, 17, 24, 29, 37, 44}
 
 func (i Status) String() string {
 	if i < 0 || i >= Status(len(_Status_index)-1) {
