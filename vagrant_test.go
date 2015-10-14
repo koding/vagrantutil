@@ -133,14 +133,26 @@ func TestList(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	for _, l := range list {
+	for i, l := range list {
 		status, err := l.Status()
 		if err != nil {
-			t.Log(err)
+			if l.State != Unknown.String() {
+				t.Errorf("failed state should be: Unknown, got: %s", l.State)
+			}
+
+			log.Println("continue because: ", err)
 			continue
 		}
 
-		fmt.Printf("status = %s path = %s\n", status, l.VagrantfilePath)
+		if l.State != status.String() {
+			t.Errorf("internal state should be: %s, got: %s", status, l.State)
+		}
+
+		if l.VagrantfilePath == "" {
+			t.Error("path should be not empty for list command")
+		}
+
+		fmt.Printf("[%d] status = %s path = %s\n", i, status, l.VagrantfilePath)
 	}
 }
 
@@ -176,5 +188,7 @@ func TestStatus(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	fmt.Printf("status = %+v\n", status)
+	if vg.State != status.String() {
+		t.Errorf("Internal state should be: %s, got: %s", status, vg.State)
+	}
 }

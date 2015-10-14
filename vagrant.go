@@ -29,6 +29,7 @@ const (
 	Running
 	Saved
 	PowerOff
+	Aborted
 )
 
 // CommandOutput is the streaming output of a command
@@ -44,6 +45,9 @@ type Vagrant struct {
 
 	// ID is the unique ID of the given box
 	ID string
+
+	// State is populated/updated if the Status() or List() method is called.
+	State string
 }
 
 // NewVagrant returns a new Vagrant instance for the given path. The path
@@ -94,7 +98,11 @@ func (v *Vagrant) Version() (string, error) {
 }
 
 // Status returns the state of the box, such as "Running", "NotCreated", etc...
-func (v *Vagrant) Status() (Status, error) {
+func (v *Vagrant) Status() (s Status, err error) {
+	defer func() {
+		v.State = s.String()
+	}()
+
 	out, err := v.runVagrantCommand("status", "--machine-readable")
 	if err != nil {
 		return Unknown, err
@@ -110,7 +118,12 @@ func (v *Vagrant) Status() (Status, error) {
 		return Unknown, err
 	}
 
-	return toStatus(status)
+	s, err = toStatus(status)
+	if err != nil {
+		return Unknown, err
+	}
+
+	return s, nil
 }
 
 func (v *Vagrant) Provider() (string, error) {
@@ -159,10 +172,13 @@ func (v *Vagrant) List() ([]*Vagrant, error) {
 	}
 
 	boxes := make([]*Vagrant, len(output))
+
 	for i, box := range output {
+		// example box: [0c269f6 default virtualbox aborted /Users/fatih/path]
 		boxes[i] = &Vagrant{
-			VagrantfilePath: box[len(box)-1],
 			ID:              box[0],
+			VagrantfilePath: box[len(box)-1],
+			State:           box[3],
 		}
 	}
 
@@ -318,6 +334,8 @@ func toStatus(state string) (Status, error) {
 		return Saved, nil
 	case "poweroff":
 		return PowerOff, nil
+	case "aborted":
+		return Aborted, nil
 	default:
 		return Unknown, fmt.Errorf("Unknown state: %s", state)
 	}
