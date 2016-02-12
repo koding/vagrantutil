@@ -30,6 +30,7 @@ const (
 	Saved
 	PowerOff
 	Aborted
+	Preparing
 )
 
 // CommandOutput is the streaming output of a command
@@ -331,6 +332,8 @@ func toStatus(state string) (Status, error) {
 		return PowerOff, nil
 	case "aborted":
 		return Aborted, nil
+	case "preparing":
+		return Preparing, nil
 	default:
 		return Unknown, fmt.Errorf("Unknown state: %s", state)
 	}
