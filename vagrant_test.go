@@ -37,7 +37,9 @@ func TestMain(m *testing.M) {
 		log.Fatalln(err)
 	}
 
-	os.Exit(m.Run())
+	ret := m.Run()
+	os.RemoveAll(vagrantName)
+	os.Exit(ret)
 }
 
 func TestVersion(t *testing.T) {
