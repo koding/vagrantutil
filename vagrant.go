@@ -4,8 +4,6 @@ package vagrantutil
 
 import (
 	"bufio"
-	"bytes"
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"io"
@@ -398,36 +396,6 @@ func (v *Vagrant) startCommand(cmd *exec.Cmd) (<-chan *CommandOutput, error) {
 	}()
 
 	return out, nil
-}
-
-// parseData parses the given vagrant type field from the machine readable
-// output (records).
-func (v *Vagrant) parseData(records [][]string, typeName string) (string, error) {
-	data := ""
-	for _, record := range records {
-		// first three are defined, after that data is variadic, it contains
-		// zero or more information. We should have a data, otherwise it's
-		// useless.
-		if len(record) < 4 {
-			continue
-		}
-
-		if typeName == record[2] {
-			data = record[3]
-		}
-	}
-
-	if data == "" {
-		return "", v.errorf("couldn't parse data for vagrant type: %q", typeName)
-	}
-
-	return data, nil
-}
-
-func (v *Vagrant) parseRecords(out string) ([][]string, error) {
-	buf := bytes.NewBufferString(out)
-	c := csv.NewReader(buf)
-	return c.ReadAll()
 }
 
 // toArgs converts the given box to argument list for `vagrant box add/remove`
