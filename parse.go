@@ -17,11 +17,9 @@ func (v *Vagrant) parseData(records [][]string, typeName string) (string, error)
 			continue
 		}
 
-		if typeName == record[2] {
+		if typeName == record[2] && record[3] != "" {
 			data = record[3]
-			if data != "" {
-				break
-			}
+			break
 		}
 	}
 
