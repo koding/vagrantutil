@@ -98,14 +98,14 @@ func (v *Vagrant) Version() (string, error) {
 		return "", err
 	}
 
-	records, err := v.parseRecords(out)
+	records, err := parseRecords(out)
 	if err != nil {
-		return "", err
+		return "", v.error(err)
 	}
 
-	versionInstalled, err := v.parseData(records, "version-installed")
+	versionInstalled, err := parseData(records, "version-installed")
 	if err != nil {
-		return "", err
+		return "", v.error(err)
 	}
 
 	return versionInstalled, nil
@@ -122,14 +122,14 @@ func (v *Vagrant) Status() (s Status, err error) {
 		return Unknown, err
 	}
 
-	records, err := v.parseRecords(out)
+	records, err := parseRecords(out)
 	if err != nil {
-		return Unknown, err
+		return Unknown, v.error(err)
 	}
 
-	status, err := v.parseData(records, "state")
+	status, err := parseData(records, "state")
 	if err != nil {
-		return Unknown, err
+		return Unknown, v.error(err)
 	}
 
 	s, err = toStatus(status)
@@ -146,12 +146,17 @@ func (v *Vagrant) Provider() (string, error) {
 		return "", err
 	}
 
-	records, err := v.parseRecords(out)
+	records, err := parseRecords(out)
 	if err != nil {
-		return "", err
+		return "", v.error(err)
 	}
 
-	return v.parseData(records, "provider-name")
+	provider, err := parseData(records, "provider-name")
+	if err != nil {
+		return "", v.error(err)
+	}
+
+	return provider, nil
 }
 
 // List returns all available boxes on the system. Under the hood it calls
