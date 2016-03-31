@@ -80,10 +80,10 @@ func (cmd *command) start(args ...string) (ch <-chan *CommandOutput, err error) 
 	}
 
 	var wg sync.WaitGroup
+	wg.Add(2)
 	out := make(chan *CommandOutput)
 
 	output := func(r io.Reader) {
-		wg.Add(1)
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
 			cmd.debugf("%s", scanner.Text())
