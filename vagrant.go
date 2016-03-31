@@ -159,6 +159,12 @@ func (v *Vagrant) Provider() (string, error) {
 // List returns all available boxes on the system. Under the hood it calls
 // "global-status" and parses the output.
 func (v *Vagrant) List() ([]*Vagrant, error) {
+	// Refresh box status cache. So it does not report that aborted
+	// box is running etc.
+	_, err := v.vagrantCommand().run("global-status", "--prune")
+	if err != nil {
+		return nil, err
+	}
 	out, err := v.vagrantCommand().run("global-status")
 	if err != nil {
 		return nil, err
