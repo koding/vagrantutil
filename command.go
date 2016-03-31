@@ -36,7 +36,7 @@ func (cmd *command) init(args []string) {
 	cmd.cmd = exec.Command("vagrant", args...)
 	cmd.cmd.Dir = cmd.cwd
 
-	cmd.debugf("executing: %v", cmd.cmd.Args)
+	cmd.debugf("%s: executing: %v", cmd.cwd, cmd.cmd.Args)
 }
 
 func (cmd *command) run(args ...string) (string, error) {

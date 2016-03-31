@@ -108,6 +108,8 @@ func (v *Vagrant) Version() (string, error) {
 	return versionInstalled, nil
 }
 
+const errNotCreated = "A Vagrant environment or target machine is required to run this"
+
 // Status returns the state of the box, such as "Running", "NotCreated", etc...
 func (v *Vagrant) Status() (s Status, err error) {
 	defer func() {
@@ -116,6 +118,10 @@ func (v *Vagrant) Status() (s Status, err error) {
 
 	out, err := v.vagrantCommand().run("status", "--machine-readable")
 	if err != nil {
+		if strings.Contains(err.Error(), errNotCreated) {
+			return NotCreated, nil
+		}
+
 		return Unknown, err
 	}
 
@@ -228,7 +234,45 @@ func (v *Vagrant) Halt() (<-chan *CommandOutput, error) {
 // stream. The client is responsible of calling the Close method of the
 // returned reader.
 func (v *Vagrant) Destroy() (<-chan *CommandOutput, error) {
-	return v.vagrantCommand().start("destroy", "--force")
+	if _, err := os.Stat(v.VagrantfilePath); os.IsNotExist(err) {
+		// Makes Destroy idempotent if called consecutively multiple times on
+		// the same path.
+		//
+		// Returning closed channel to not make existing like the one
+		// below hang:
+		//
+		//   ch, err := vg.Destroy()
+		//   if err != nil {
+		//     ...
+		//   }
+		//   for line := range ch {
+		//     ...
+		//   }
+		//
+		ch := make(chan *CommandOutput)
+		close(ch)
+
+		return ch, nil
+	}
+
+	cmd := v.vagrantCommand()
+	cmd.onSuccess = func() {
+		// cleanup vagrant directory on success, as it's no longer needed;
+		// after destroy it should be not possible to call vagrant up
+		// again, call to Create is required first
+		if err := os.RemoveAll(v.VagrantfilePath); err != nil {
+			v.debugf("failed to cleanup %q after destroy: %s", v.VagrantfilePath, err)
+		}
+
+		// We leave empty directory to not make other commands fail
+		// due to missing cwd.
+		//
+		// TODO(rjeczalik): rework lookup to use box id instead
+		if err := os.MkdirAll(v.VagrantfilePath, 0755); err != nil {
+			v.debugf("failed to create empty dir %q after destroy: %s", v.VagrantfilePath, err)
+		}
+	}
+	return cmd.start("destroy", "--force")
 }
 
 var stripFmt = strings.NewReplacer("(", "", ",", "", ")", "")
