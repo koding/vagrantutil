@@ -2,9 +2,11 @@ package vagrantutil
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 	"sync"
 
 	"github.com/koding/logging"
@@ -16,6 +18,9 @@ type command struct {
 
 	onSuccess func()
 	onFailure func(err error)
+
+	ignoreErr  func(err error) bool
+	errIgnored bool
 
 	cmd *exec.Cmd
 }
@@ -43,12 +48,12 @@ func (cmd *command) run(args ...string) (string, error) {
 	cmd.init(args)
 
 	out, err := cmd.cmd.CombinedOutput()
-	if err != nil {
-		if len(out) != 0 {
-			err = fmt.Errorf("%s: %s", err, out)
-		}
+	if err != nil && len(out) != 0 {
+		err = fmt.Errorf("%s: %s", err, out)
+	}
 
-		return "", cmd.done(err)
+	if e := cmd.checkError(err); e != nil {
+		return "", cmd.done(e)
 	}
 
 	s := string(out)
@@ -86,14 +91,18 @@ func (cmd *command) start(args ...string) (ch <-chan *CommandOutput, err error) 
 	output := func(r io.Reader) {
 		scanner := bufio.NewScanner(r)
 		for scanner.Scan() {
-			cmd.debugf("%s", scanner.Text())
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" {
+				continue // ignore excessive whitespace
+			}
 
-			out <- &CommandOutput{Line: scanner.Text(), Error: nil}
+			cmd.debugf("%s", line)
+			cmd.checkError(errors.New(line))
+
+			out <- &CommandOutput{Line: line}
 		}
 
-		if err := scanner.Err(); err != nil {
-			out <- &CommandOutput{Error: err}
-		}
+		cmd.reportError(out, scanner.Err())
 		wg.Done()
 	}
 
@@ -102,10 +111,8 @@ func (cmd *command) start(args ...string) (ch <-chan *CommandOutput, err error) 
 
 	go func() {
 		wg.Wait()
-		var err error
-		if err = cmd.cmd.Wait(); err != nil {
-			out <- &CommandOutput{Error: err}
-		}
+
+		err := cmd.reportError(out, cmd.cmd.Wait())
 
 		close(out)
 		cmd.done(err)
@@ -115,21 +122,46 @@ func (cmd *command) start(args ...string) (ch <-chan *CommandOutput, err error) 
 }
 
 func (cmd *command) done(err error) error {
-	if err == nil {
-		if cmd.onSuccess != nil {
-			cmd.onSuccess()
+	if e := cmd.checkError(err); e != nil {
+
+		cmd.debugf("execution of %v failed: %s", cmd.cmd.Args, e)
+
+		if cmd.onFailure != nil {
+			cmd.onFailure(e)
 		}
 
+		return e
+	}
+
+	if cmd.onSuccess != nil {
+		cmd.onSuccess()
+	}
+
+	return nil
+}
+
+func (cmd *command) checkError(err error) error {
+	if err == nil {
 		return nil
 	}
 
-	cmd.debugf("execution of %v failed: %s", cmd.cmd.Args, err)
-
-	if cmd.onFailure != nil {
-		cmd.onFailure(err)
+	if cmd.errIgnored || cmd.ignoreErr != nil && cmd.ignoreErr(err) {
+		cmd.errIgnored = true
+		return nil
 	}
 
 	return err
+}
+
+func (cmd *command) reportError(out chan<- *CommandOutput, err error) error {
+	if e := cmd.checkError(err); e != nil {
+		cmd.debugf("reporting error for %v: %s (%t)", cmd.cmd.Args, err, cmd.errIgnored)
+		out <- &CommandOutput{Error: err}
+
+		return e
+	}
+
+	return nil
 }
 
 func (cmd *command) debugf(format string, args ...interface{}) {

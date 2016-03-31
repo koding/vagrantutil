@@ -108,21 +108,30 @@ func (v *Vagrant) Version() (string, error) {
 	return versionInstalled, nil
 }
 
-const errNotCreated = "A Vagrant environment or target machine is required to run this"
-
 // Status returns the state of the box, such as "Running", "NotCreated", etc...
 func (v *Vagrant) Status() (s Status, err error) {
 	defer func() {
 		v.State = s.String()
 	}()
 
-	out, err := v.vagrantCommand().run("status", "--machine-readable")
-	if err != nil {
-		if strings.Contains(err.Error(), errNotCreated) {
-			return NotCreated, nil
+	var notCreated bool
+	cmd := v.vagrantCommand()
+	cmd.ignoreErr = func(err error) bool {
+		if isNotCreated(err) {
+			notCreated = true
+			return true
 		}
 
+		return false
+	}
+
+	out, err := cmd.run("status", "--machine-readable")
+	if err != nil {
 		return Unknown, err
+	}
+
+	if notCreated {
+		return NotCreated, nil
 	}
 
 	records, err := parseRecords(out)
@@ -272,6 +281,10 @@ func (v *Vagrant) Destroy() (<-chan *CommandOutput, error) {
 			v.debugf("failed to create empty dir %q after destroy: %s", v.VagrantfilePath, err)
 		}
 	}
+	// if vagrant box is not created, return success - the destroy
+	// should be effectively a nop
+	cmd.ignoreErr = isNotCreated
+
 	return cmd.start("destroy", "--force")
 }
 
