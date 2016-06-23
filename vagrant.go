@@ -344,6 +344,14 @@ func (v *Vagrant) BoxRemove(box *Box) (<-chan *CommandOutput, error) {
 	return v.vagrantCommand().start(args...)
 }
 
+// SSH executes "vagrant ssh" for the given vagrantfile. The returned channel
+// contains the output stream. At the end of the output, the error is put into
+// the Error field if there is any.
+func (v *Vagrant) SSH(command string) (<-chan *CommandOutput, error) {
+	args := []string{"ssh", "-c", command}
+	return v.vagrantCommand().start(args...)
+}
+
 // vagrantfile returns the Vagrantfile path
 func (v *Vagrant) vagrantfile() string {
 	return filepath.Join(v.VagrantfilePath, "Vagrantfile")

@@ -144,6 +144,15 @@ func TestUp(t *testing.T) {
 	}
 }
 
+func TestSSH(t *testing.T) {
+	out, err := vg.SSH("ifconfig -a")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testOutput(t, "vagrant ssh", out)
+}
+
 func TestHalt(t *testing.T) {
 	out, err := vg.Halt()
 	if err != nil {
