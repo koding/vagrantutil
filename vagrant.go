@@ -48,8 +48,8 @@ type Vagrant struct {
 	// Vagrantfile is being stored.
 	VagrantfilePath string
 
-	// Provider overwrites the default provider used for the Vagrantfile.
-	Provider string
+	// ProviderName overwrites the default provider used for the Vagrantfile.
+	ProviderName string
 
 	// ID is the unique ID of the given box.
 	ID string
