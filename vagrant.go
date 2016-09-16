@@ -232,8 +232,8 @@ func (v *Vagrant) List() ([]*Vagrant, error) {
 // contains the output stream. At the end of the output, the error is put into
 // the Error field if there is any.
 func (v *Vagrant) Up() (<-chan *CommandOutput, error) {
-	if v.Provider != "" {
-		return v.vagrantCommand().start("up", "--provider", v.Provider)
+	if v.ProviderName != "" {
+		return v.vagrantCommand().start("up", "--provider", v.ProviderName)
 	}
 
 	return v.vagrantCommand().start("up")
