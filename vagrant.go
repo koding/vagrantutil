@@ -398,6 +398,15 @@ func (v *Vagrant) error(err error) error {
 	return err
 }
 
+// Runs "ssh-config" and returns the output.
+func (v *Vagrant) SSHConfig() (string, error) {
+	out, err := v.vagrantCommand().run("ssh-config")
+	if err != nil {
+		return "", err
+	}
+	return out, nil	
+}
+
 // toArgs converts the given box to argument list for `vagrant box add/remove`
 // commands
 func toArgs(box *Box) (args []string) {
